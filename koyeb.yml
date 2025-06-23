@@ -1,0 +1,12 @@
+name: api-canciones-espanol
+
+build:
+  # Usa el build pack de Node.js automáticamente
+  run: npm install
+
+run:
+  cmd: npm start
+  # El puerto por defecto es 3000 pero Koyeb usa $PORT
+  env:
+    - name: PORT
+      value: "3000"
