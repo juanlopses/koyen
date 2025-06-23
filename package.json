@@ -1,0 +1,16 @@
+{
+  "name": "api-canciones-espanol",
+  "version": "1.0.0",
+  "description": "API en español para buscar canciones y obtener un enlace temporal de descarga.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "newton",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "*",
+    "express": "*",
+    "form-data": "*"
+  }
+}
