@@ -7,7 +7,7 @@ const FormData = require('form-data');
 const app = express();
 const PUERTO = process.env.PORT || 3000;
 
-// Función para descargar el archivo MP3 temporalmente
+// Descargar archivo temporalmente
 async function descargarArchivo(url, destino) {
   const writer = fs.createWriteStream(destino);
   const response = await axios({ url, method: 'GET', responseType: 'stream' });
@@ -18,7 +18,7 @@ async function descargarArchivo(url, destino) {
   });
 }
 
-// Función para subir el archivo a tmpfiles.org
+// Subir archivo a tmpfiles.org
 async function subirArchivoTmpFiles(rutaArchivo) {
   const form = new FormData();
   form.append('file', fs.createReadStream(rutaArchivo));
@@ -26,7 +26,11 @@ async function subirArchivoTmpFiles(rutaArchivo) {
     headers: form.getHeaders()
   });
   // El enlace de descarga está en response.data.data.url
-  return response.data.data.url;
+  if (response.data && response.data.data && response.data.data.url) {
+    return response.data.data.url;
+  } else {
+    throw new Error('No se pudo obtener el enlace temporal del archivo.');
+  }
 }
 
 app.get('/cancion', async (req, res) => {
@@ -35,24 +39,31 @@ app.get('/cancion', async (req, res) => {
     return res.status(400).json({ error: 'Falta el parámetro q (nombre de la canción o artista)' });
   }
   try {
-    // Paso 1: Obtiene los datos de la API interna
+    // Consulta a la API de neoxr
     const respuesta = await axios.get('https://api.neoxr.eu/api/play', {
       params: { q, apikey: 'Paimon' }
     });
     const data = respuesta.data;
 
-    // Paso 2: Descarga el archivo MP3 temporalmente
+    // Validación de estructura
+    if (!data || !data.data || !data.data.url) {
+      return res.status(404).json({
+        error: 'No se encontró la canción o la API interna no devolvió datos válidos.',
+        detalles: data
+      });
+    }
+
+    // Descarga el archivo temporalmente
     const nombreTemp = `cancion_${Date.now()}.mp3`;
     const rutaTemp = path.join(__dirname, nombreTemp);
     await descargarArchivo(data.data.url, rutaTemp);
 
-    // Paso 3: Sube el archivo a tmpfiles.org y obtiene el nuevo enlace
+    // Sube el archivo y obtiene el nuevo enlace
     const enlaceTemporal = await subirArchivoTmpFiles(rutaTemp);
-
-    // Borra el archivo temporal
+    // Elimina el archivo temporal
     fs.unlink(rutaTemp, () => {});
 
-    // Paso 4: Devuelve la respuesta en español con el nuevo enlace
+    // Respuesta en español con el nuevo enlace
     const respuestaFinal = {
       creador: "newton",
       estado: data.status,
@@ -69,7 +80,7 @@ app.get('/cancion', async (req, res) => {
         calidad: data.data.quality,
         tamaño: data.data.size,
         extension: data.data.extension,
-        enlace: enlaceTemporal // El nuevo enlace temporal del audio
+        enlace: enlaceTemporal // Enlace temporal del audio
       }
     };
 
